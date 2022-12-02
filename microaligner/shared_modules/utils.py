@@ -68,7 +68,10 @@ def pad_to_shape(
 
 def read_tiff_page(img_path: Path, page_id: int, series_id=0) -> Image:
     with tif.TiffFile(path_to_str(img_path)) as TF:
-        page = TF.series[series_id].pages[page_id].asarray()
+        if len(TF.series[series_id].pages[page_id].shape) > 2:
+            page = TF.series[series_id].asarray()[page_id].squeeze()
+        else:
+            page = TF.series[series_id].pages[page_id].asarray().squeeze()
     return page
 
 
