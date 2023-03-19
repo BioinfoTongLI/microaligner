@@ -491,6 +491,7 @@ def run_feature_reg(config: PipelineConfig, target_shape: Shape2D):
         use_dog,
     )
 
+    save_param(out_dir, tmat_per_cycle, padding_per_cycle, target_shape)
     feature_reg_out_file_names = {
         "stack": out_prefix + "feature_reg_result_stack.tif",
         "per_cycle": out_prefix + "feature_reg_result_cyc{cyc:03d}.tif",
@@ -505,7 +506,6 @@ def run_feature_reg(config: PipelineConfig, target_shape: Shape2D):
         input_is_stack,
         output_is_stack,
     )
-    save_param(out_dir, tmat_per_cycle, padding_per_cycle, target_shape)
     if output_is_stack:
         img_paths = {"CycleStack": out_dir / feature_reg_out_file_names["stack"]}
     else:
