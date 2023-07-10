@@ -38,6 +38,7 @@ from .shared_modules.utils import (pad_to_shape, path_to_str,
                                    set_number_of_dask_workers,
                                    transform_img_with_tmat)
 
+__version__ = "1.0.1"
 
 def get_first_element_of_dict(dictionary: dict):
     first_key = list(dictionary.keys())[0]
@@ -436,15 +437,17 @@ def register_and_save_ofreg_imgs(
     if save_to_stack:
         del img_memmap
 
-
-def parse_cmd_args() -> Path:
+# Parse the command line arguments and return the config file path, output prefix if provided and number of cpu cores to use
+def parse_cmd_args() -> tuple(Path, str, int):
     parser = argparse.ArgumentParser(
         description="MicroAligner: image registration for large scale microscopy"
     )
     parser.add_argument("config", type=Path, help="path to the config yaml file")
+    parser.add_argument("out_prefix", type=str, help="prefix for the output files", default=None)
+    parser.add_argument("n_cpu", type=int, help="number of cpu cores to use", default=-1)
     args = parser.parse_args()
     reg_config_path = args.config
-    return reg_config_path
+    return reg_config_path, args.out_prefix, args.n_cpu
 
 
 def run_feature_reg(config: PipelineConfig, target_shape: Shape2D):
@@ -623,9 +626,14 @@ def get_img_path_list(config: PipelineConfig) -> List[Path]:
 
 def main():
     print("Started\n")
-    config_path = parse_cmd_args()
+    config_path, out_prefix, n_cpu = parse_cmd_args()
     reader = PipelineConfigReader()
     config = reader.read_config(config_path)
+    if out_prefix is not None: # update the output prefix if it was provided
+        config.Output.OutputPrefix = out_prefix
+    if n_cpu > 0: # update the number of workers if it was provided
+        config.RegistrationParameters.FeatureReg.NumberOfWorkers = n_cpu
+        config.RegistrationParameters.OptFlowReg.NumberOfWorkers = n_cpu
     print("The input config is:")
     pprint(config, sort_dicts=False, indent=2)
 
