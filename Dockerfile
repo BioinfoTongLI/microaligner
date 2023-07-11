@@ -1,0 +1,10 @@
+FROM continuumio/miniconda3:4.10.3
+
+RUN apt-get --allow-releaseinfo-change update && apt-get install --fix-missing  libgl1-mesa-glx procps git -y && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+RUN python3 -m pip install --upgrade pip \
+	fire \
+	--no-cache-dir
+RUN git clone https://github.com/BioinfoTongLI/microaligner.git
+RUN cd microaligner && python3 -m pip install -e .

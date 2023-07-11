@@ -4,3 +4,4 @@ microaligner.egg-info
 dist
 build
 .vscode/settings.json
+*.un~
