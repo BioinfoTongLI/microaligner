@@ -40,7 +40,7 @@ from .shared_modules.utils import (pad_to_shape, path_to_str,
                                    set_number_of_dask_workers,
                                    transform_img_with_tmat)
 
-__version__ = "1.0.1"
+__version__ = "1.0.2"
 
 def read_yaml(path: Path) -> dict:
     with open(path, "r", encoding="utf-8") as s:
@@ -659,7 +659,7 @@ def get_img_path_list(config: PipelineConfig) -> List[Path]:
 
 def main():
     config = parse_cmd_args_to_config()
-    
+
     print("Started\n")
     if not config.Output.OutputDir.exists():
         config.Output.OutputDir.mkdir(parents=True)

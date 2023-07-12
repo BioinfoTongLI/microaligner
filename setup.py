@@ -43,7 +43,7 @@ if not opencv_installed:
 
 setuptools.setup(
     name="microaligner",
-    version="1.0.1",
+    version="1.0.2",
     packages=setuptools.find_packages(),
     url="",
     platforms=["any"],
