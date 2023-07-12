@@ -21,15 +21,7 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Iterable, Optional, Union
 
-import yaml
-
 FloatInt = Union[float, int]
-
-
-def read_yaml(path: Path) -> dict:
-    with open(path, "r", encoding="utf-8") as s:
-        yaml_file = yaml.safe_load(s)
-    return yaml_file
 
 
 def check_field_dtype(field_name: str, dtype: Union[type, Iterable[type]], obj: dict):
@@ -151,8 +143,7 @@ class PipelineConfigReader:
     Output: PipelineOutput = PipelineOutput()
     RegistrationParameters: PipelineRegParam = PipelineRegParam()
 
-    def read_config(self, config_path: Path):
-        config = read_yaml(config_path)
+    def read_config(self, config : dict) -> PipelineConfig:
         self.check_top_lvl_fields_exist(config)
         self.parse_input(config["Input"])
         self.parse_output(config["Output"])
@@ -162,6 +153,32 @@ class PipelineConfigReader:
         pipeline_config.Output = self.Output
         pipeline_config.RegistrationParameters = self.RegistrationParameters
         return pipeline_config
+
+    def read_cmd_args(self, args) -> PipelineConfig:
+        config = PipelineConfig()
+        config.Input = self.Input
+        config.Input.ReferenceCycle = args["ReferenceCycle"]
+        config.Input.ReferenceChannel = args["ReferenceChannel"]
+
+        config.Output = self.Output
+        config.Output.OutputDir = Path(args["OutputDir"])
+        config.Output.OutputPrefix = args["OutputPrefix"]
+        config.Output.SaveOutputToCycleStack = args["SaveOutputToCycleStack"]
+
+        config.RegistrationParameters = self.RegistrationParameters
+        # Assuming input with multiple images is for feature registration
+        # and input with single image is for optical flow registration
+        if len(args["InputImagePaths"]) == 1:
+            config.Input.InputImagePaths = {"CycleStack" : args["InputImagePaths"][0]}
+            config.Input.PipelineInputType = self.get_path_dict_type(config.Input.InputImagePaths)
+            config.RegistrationParameters.OptFlowReg.read_from_dict(args)
+            config.RegistrationParameters.FeatureReg = None
+        else:
+            config.Input.InputImagePaths = {k + 1:v for k, v in enumerate(args["InputImagePaths"])}
+            config.Input.PipelineInputType = self.get_path_dict_type(config.Input.InputImagePaths)
+            config.RegistrationParameters.FeatureReg.read_from_dict(args)
+            config.RegistrationParameters.OptFlowReg = None
+        return config
 
     def check_top_lvl_fields_exist(self, config: dict):
         top_lvl_fields = ["Input", "Output", "RegistrationParameters"]

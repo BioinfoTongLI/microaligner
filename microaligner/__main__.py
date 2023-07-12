@@ -25,6 +25,8 @@ import numpy as np
 import pandas as pd
 import tifffile as tif
 
+import yaml
+
 from .feature_reg import FeatureRegistrator
 from .optflow_reg import OptFlowRegistrator, Warper
 from .pipeline_modules.config_reader import (PipelineConfig,
@@ -39,6 +41,12 @@ from .shared_modules.utils import (pad_to_shape, path_to_str,
                                    transform_img_with_tmat)
 
 __version__ = "1.0.1"
+
+def read_yaml(path: Path) -> dict:
+    with open(path, "r", encoding="utf-8") as s:
+        yaml_file = yaml.safe_load(s)
+    return yaml_file
+
 
 def get_first_element_of_dict(dictionary: dict):
     first_key = list(dictionary.keys())[0]
@@ -437,17 +445,42 @@ def register_and_save_ofreg_imgs(
     if save_to_stack:
         del img_memmap
 
-# Parse the command line arguments and return the config file path, output prefix if provided and number of cpu cores to use
-def parse_cmd_args() -> tuple(Path, str, int):
+# Parse the command line arguments and return the PipelineConfig object
+def parse_cmd_args_to_config() -> PipelineConfig:
     parser = argparse.ArgumentParser(
         description="MicroAligner: image registration for large scale microscopy"
     )
-    parser.add_argument("config", type=Path, help="path to the config yaml file")
-    parser.add_argument("out_prefix", type=str, help="prefix for the output files", default=None)
-    parser.add_argument("n_cpu", type=int, help="number of cpu cores to use", default=-1)
-    args = parser.parse_args()
-    reg_config_path = args.config
-    return reg_config_path, args.out_prefix, args.n_cpu
+    parser.add_argument("--config", type=Path, help="path to the config yaml file", default=None)
+
+    parser.add_argument("--InputImagePaths", type=str, nargs="+", help="Path to images to be registered", default=None)
+    parser.add_argument("--ReferenceCycle", type=int, help="index of the reference cycle (1-based)", default=1)
+    parser.add_argument("--ReferenceChannel", type=str, help="Name of the reference channel", default="DAPI")
+
+    parser.add_argument("--OutputDir", type=str, help="Output dir", default="./registered_images")
+    parser.add_argument("--OutputPrefix", type=str, help="Prefix for the output files", default="microaligner_")
+    parser.add_argument("--SaveOutputToCycleStack", type=bool, help="", default=True)
+
+    parser.add_argument("--NumberPyramidLevels", type=int, help="Pyramid level", default=3)
+    parser.add_argument("--NumberIterationsPerLevel", type=int, help="Iterration per level", default=3)
+    parser.add_argument("--TileSize", type=int, help="Size for tile to process", default=1000)
+    parser.add_argument("--Overlap", type=int, help="Overlap size between tiles", default=100)
+    parser.add_argument("--NumberOfWorkers", type=int, help="Number of workers", default=0)
+    parser.add_argument("--UseFullResImage", type=bool, help="Use full resolution image for ", default=False)
+    parser.add_argument("--UseDOG", type=bool, help="Use difference of Gaussiant to prefilter", default=True)
+    parser.add_argument('--version', action='version', version='%(prog)s {version}'.format(version=__version__))
+
+    args = vars(parser.parse_args())
+    reader = PipelineConfigReader()
+    if args["config"] is not None:
+        print("Use parameters in the user-provided config file")
+        config_dict = read_yaml(args["config"])
+        config = reader.read_config(config_dict)
+    else:
+        print("Use parameters provided in the command line")
+        config = reader.read_cmd_args(args)
+    print("The input config is:")
+    pprint(config, sort_dicts=False, indent=2)
+    return config
 
 
 def run_feature_reg(config: PipelineConfig, target_shape: Shape2D):
@@ -625,18 +658,9 @@ def get_img_path_list(config: PipelineConfig) -> List[Path]:
 
 
 def main():
+    config = parse_cmd_args_to_config()
+    
     print("Started\n")
-    config_path, out_prefix, n_cpu = parse_cmd_args()
-    reader = PipelineConfigReader()
-    config = reader.read_config(config_path)
-    if out_prefix is not None: # update the output prefix if it was provided
-        config.Output.OutputPrefix = out_prefix
-    if n_cpu > 0: # update the number of workers if it was provided
-        config.RegistrationParameters.FeatureReg.NumberOfWorkers = n_cpu
-        config.RegistrationParameters.OptFlowReg.NumberOfWorkers = n_cpu
-    print("The input config is:")
-    pprint(config, sort_dicts=False, indent=2)
-
     if not config.Output.OutputDir.exists():
         config.Output.OutputDir.mkdir(parents=True)
     img_path_list = get_img_path_list(config)
