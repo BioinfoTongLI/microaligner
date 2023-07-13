@@ -1,4 +1,5 @@
-FROM continuumio/miniconda3:4.10.3
+#FROM continuumio/miniconda3:4.10.3
+FROM python:3.10-slim
 
 RUN apt-get --allow-releaseinfo-change update && apt-get install --fix-missing  libgl1-mesa-glx procps git -y && \
     apt-get clean && \
