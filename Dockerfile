@@ -7,4 +7,4 @@ RUN python3 -m pip install --upgrade pip \
 	fire \
 	--no-cache-dir
 RUN git clone https://github.com/BioinfoTongLI/microaligner.git
-RUN cd microaligner && python3 -m pip install -e .
+RUN cd microaligner && git checkout develop && python3 -m pip install -e .
